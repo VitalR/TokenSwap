@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
@@ -18,5 +18,11 @@ contract Exchange {
 
     function getReserve() public view returns (uint) {
         return IERC20(token).balanceOf(address(this));
+    }
+
+    function getPrice(uint inputReserve, uint outputReserve) public view returns (uint) {
+        require(inputReserve > 0 && outputReserve > 0, "Invalid reserves");
+
+        return (inputReserve * 1000) / outputReserve;
     }
 }
