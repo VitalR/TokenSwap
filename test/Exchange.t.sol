@@ -47,8 +47,52 @@ contract ExchangeTest is Test {
 
         // token per ether
         assertEq(tokenPrice, 2000);
-
         // // ether per token
         assertEq(ethPrice, 500);
+    }
+
+    // slippage affects prices
+    function testGetTokenAmount() public {
+        uint liqAmmount = 2000 wei;
+        startHoax(owner);
+        token.mint(address(owner), liqAmmount);
+        token.approve(address(exchange), liqAmmount);
+        exchange.addLiquidity{ value: 1000 wei }(liqAmmount);
+
+        uint tokenOutAmount = exchange.getTokenAmount(10 wei);
+        console.log(tokenOutAmount);
+        assertEq(tokenOutAmount, 19);
+
+        tokenOutAmount = exchange.getTokenAmount(100 wei);
+        console.log(tokenOutAmount);
+        assertEq(tokenOutAmount, 181);
+
+        tokenOutAmount = exchange.getTokenAmount(1000 wei);
+        console.log(tokenOutAmount);
+        assertEq(tokenOutAmount, 1000);
+    }
+
+    function testGetEtherAmount() public {
+        uint liqAmmount = 2000 wei;
+        startHoax(owner);
+        token.mint(address(owner), liqAmmount);
+        token.approve(address(exchange), liqAmmount);
+        exchange.addLiquidity{ value: 1000 wei }(liqAmmount);
+
+        uint etherOutAmount = exchange.getEtherAmount(10 wei);
+        console.log(etherOutAmount);
+        assertEq(etherOutAmount, 4);
+
+        etherOutAmount = exchange.getEtherAmount(100 wei);
+        console.log(etherOutAmount);
+        assertEq(etherOutAmount, 47);
+
+        etherOutAmount = exchange.getEtherAmount(1000 wei);
+        console.log(etherOutAmount);
+        assertEq(etherOutAmount, 333);
+
+        etherOutAmount = exchange.getEtherAmount(2000 wei);
+        console.log(etherOutAmount);
+        assertEq(etherOutAmount, 500);
     }
 }
