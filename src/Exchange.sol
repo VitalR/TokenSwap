@@ -30,7 +30,6 @@ contract Exchange {
         return (inputReserve * 1000) / outputReserve;
     }
 
-    // outputAmount
     function getOutputAmount(
         uint256 inputAmount,
         uint256 inputReserve,
@@ -55,5 +54,24 @@ contract Exchange {
         uint256 tokenReserve = getReserve();
 
         return getOutputAmount(tokenSold, tokenReserve, address(this).balance);
+    }
+
+    function ethToTokenSwap(uint minTokens) public payable {
+        uint tokenReserve = getReserve();
+        uint tokenBought = getOutputAmount(msg.value, address(this).balance - msg.value, tokenReserve);
+
+        require(tokenBought >= minTokens, "Insufficient output token amount");
+
+        IERC20(token).transfer(msg.sender, tokenBought);
+    }
+
+    function tokenToEthSwap(uint tokenSold, uint minEth) public {
+        uint tokenReserve = getReserve();
+        uint ethBought = getOutputAmount(tokenSold, tokenReserve, address(this).balance);
+
+        require(ethBought >= minEth, "Insufficient output ether amount");
+
+        IERC20(token).transferFrom(msg.sender, address(this), tokenSold);
+        payable(msg.sender).transfer(ethBought);
     }
 }
