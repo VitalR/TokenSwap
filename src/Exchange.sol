@@ -54,7 +54,11 @@ contract Exchange is ERC20 {
     ) private pure returns (uint) {
         require(inputReserve > 0 && outputReserve > 0, "Invalid reserves");
 
-        return (outputReserve * inputAmount) / (inputReserve + inputAmount);
+        uint inputAmountWithFees = inputAmount * 99; // inputAmount * (100 - fee), fee == 1
+        uint numerator = outputReserve * inputAmountWithFees;
+        uint denominator = (inputAmount * 100) + inputAmountWithFees; 
+
+        return numerator / denominator;
     }
 
     function getTokenAmount(uint etherSold) public view returns (uint) {
