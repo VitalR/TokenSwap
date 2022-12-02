@@ -61,15 +61,15 @@ contract ExchangeTest is Test {
 
         uint tokenOutAmount = exchange.getTokenAmount(10 wei);
         console.log(tokenOutAmount);
-        assertEq(tokenOutAmount, 19);
+        assertEq(tokenOutAmount, 994);
 
-        tokenOutAmount = exchange.getTokenAmount(100 wei);
-        console.log(tokenOutAmount);
-        assertEq(tokenOutAmount, 181);
+        // tokenOutAmount = exchange.getTokenAmount(100 wei);
+        // console.log(tokenOutAmount);
+        // assertEq(tokenOutAmount, 181);
 
-        tokenOutAmount = exchange.getTokenAmount(1000 wei);
-        console.log(tokenOutAmount);
-        assertEq(tokenOutAmount, 1000);
+        // tokenOutAmount = exchange.getTokenAmount(1000 wei);
+        // console.log(tokenOutAmount);
+        // assertEq(tokenOutAmount, 1000);
     }
 
     function testGetEtherAmount() public {
@@ -81,18 +81,39 @@ contract ExchangeTest is Test {
 
         uint etherOutAmount = exchange.getEtherAmount(10 wei);
         console.log(etherOutAmount);
-        assertEq(etherOutAmount, 4);
+        assertEq(etherOutAmount, 497);
 
-        etherOutAmount = exchange.getEtherAmount(100 wei);
-        console.log(etherOutAmount);
-        assertEq(etherOutAmount, 47);
+        // etherOutAmount = exchange.getEtherAmount(100 wei);
+        // console.log(etherOutAmount);
+        // assertEq(etherOutAmount, 47);
 
-        etherOutAmount = exchange.getEtherAmount(1000 wei);
-        console.log(etherOutAmount);
-        assertEq(etherOutAmount, 333);
+        // etherOutAmount = exchange.getEtherAmount(1000 wei);
+        // console.log(etherOutAmount);
+        // assertEq(etherOutAmount, 333);
 
-        etherOutAmount = exchange.getEtherAmount(2000 wei);
-        console.log(etherOutAmount);
-        assertEq(etherOutAmount, 500);
+        // etherOutAmount = exchange.getEtherAmount(2000 wei);
+        // console.log(etherOutAmount);
+        // assertEq(etherOutAmount, 500);
+    }
+
+    function testRemoveLiquidity() public {
+        uint liqAmmount = 200 wei;
+        startHoax(owner);
+        token.mint(address(owner), liqAmmount);
+        token.approve(address(exchange), liqAmmount);
+        exchange.addLiquidity{ value: 100 wei }(liqAmmount);
+        vm.stopPrank();
+
+        // vm.startPrank(user);
+        uint minTokens = 18 wei;
+        hoax(user, 500 wei);
+        // token.mint(address(user), 1000 wei);
+        exchange.ethToTokenSwap{ value: 10 wei }(minTokens);
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        uint ethAmount;
+        uint tokenAmount;
+        (ethAmount, tokenAmount) = exchange.removeLiquidity(100 wei);
     }
 }

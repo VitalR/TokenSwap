@@ -13,82 +13,115 @@ contract Exchange is ERC20 {
         token = token_;
     }
 
-    function addLiquidity(uint tokenAmount) public payable returns (uint) {
+    function addLiquidity(uint256 tokenAmount)
+        public
+        payable
+        returns (uint256)
+    {
         if (getReserve() == 0) {
             IERC20(token).transferFrom(msg.sender, address(this), tokenAmount);
 
-            uint liquidity = address(this).balance;
+            uint256 liquidity = address(this).balance;
             _mint(msg.sender, liquidity);
 
             return liquidity;
         } else {
-            uint ethReserve = address(this).balance;
-            uint tokenReserve = getReserve();
-            uint tokenAmount_ = (msg.value * tokenReserve) / ethReserve;
+            uint256 ethReserve = address(this).balance;
+            uint256 tokenReserve = getReserve();
+            uint256 tokenAmount_ = (msg.value * tokenReserve) / ethReserve;
             require(tokenAmount >= tokenAmount_, "Insufficient token amount");
 
             IERC20(token).transferFrom(msg.sender, address(this), tokenAmount_);
 
-            uint lpSupply = totalSupply();
-            uint liquidity = (lpSupply * msg.value) / ethReserve;
+            uint256 lpTotalAmount = totalSupply();
+            uint256 liquidity = (lpTotalAmount * msg.value) / ethReserve;
             _mint(msg.sender, liquidity);
 
             return liquidity;
         }
     }
 
-    function getReserve() public view returns (uint) {
+    function removeLiquidity(uint256 lpAmount)
+        public
+        returns (uint256, uint256)
+    {
+        require(lpAmount > 0, "Invalid lp token amount");
+
+        uint256 lpTotalAmount = totalSupply();
+        uint256 ethAmount = (address(this).balance * lpAmount) / lpTotalAmount;
+        uint256 tokenAmount = (getReserve() * lpAmount) / lpTotalAmount;
+
+        _burn(msg.sender, lpAmount);
+        payable(msg.sender).transfer(ethAmount);
+        IERC20(token).transfer(msg.sender, tokenAmount);
+
+        return (ethAmount, tokenAmount);
+    }
+
+    function getReserve() public view returns (uint256) {
         return IERC20(token).balanceOf(address(this));
     }
 
-    function getPrice(uint inputReserve, uint outputReserve) public pure returns (uint) {
+    function getPrice(uint256 inputReserve, uint256 outputReserve)
+        public
+        pure
+        returns (uint256)
+    {
         require(inputReserve > 0 && outputReserve > 0, "Invalid reserves");
 
         return (inputReserve * 1000) / outputReserve;
     }
 
     function getOutputAmount(
-        uint inputAmount,
-        uint inputReserve,
-        uint outputReserve
-    ) private pure returns (uint) {
+        uint256 inputAmount,
+        uint256 inputReserve,
+        uint256 outputReserve
+    ) private pure returns (uint256) {
         require(inputReserve > 0 && outputReserve > 0, "Invalid reserves");
 
-        uint inputAmountWithFees = inputAmount * 99; // inputAmount * (100 - fee), fee == 1
-        uint numerator = outputReserve * inputAmountWithFees;
-        uint denominator = (inputAmount * 100) + inputAmountWithFees; 
+        uint256 inputAmountWithFees = inputAmount * 99; // inputAmount * (100 - fee), fee == 1
+        uint256 numerator = outputReserve * inputAmountWithFees;
+        uint256 denominator = (inputAmount * 100) + inputAmountWithFees;
 
         return numerator / denominator;
     }
 
-    function getTokenAmount(uint etherSold) public view returns (uint) {
+    function getTokenAmount(uint256 etherSold) public view returns (uint256) {
         require(etherSold > 0, "etherSold is too small");
 
-        uint tokenReserve = getReserve();
+        uint256 tokenReserve = getReserve();
 
         return getOutputAmount(etherSold, address(this).balance, tokenReserve);
     }
 
-    function getEtherAmount(uint tokenSold) public view returns (uint) {
+    function getEtherAmount(uint256 tokenSold) public view returns (uint256) {
         require(tokenSold > 0, "tokenSold is too small");
 
-        uint tokenReserve = getReserve();
+        uint256 tokenReserve = getReserve();
 
         return getOutputAmount(tokenSold, tokenReserve, address(this).balance);
     }
 
-    function ethToTokenSwap(uint minTokens) public payable {
-        uint tokenReserve = getReserve();
-        uint tokenBought = getOutputAmount(msg.value, address(this).balance - msg.value, tokenReserve);
+    function ethToTokenSwap(uint256 minTokens) public payable {
+        uint256 tokenReserve = getReserve();
+        uint256 tokenBought = getOutputAmount(
+            msg.value,
+            address(this).balance - msg.value,
+            tokenReserve
+        );
 
         require(tokenBought >= minTokens, "Insufficient output token amount");
 
         IERC20(token).transfer(msg.sender, tokenBought);
     }
 
-    function tokenToEthSwap(uint tokenSold, uint minEth) public {
-        uint tokenReserve = getReserve();
-        uint ethBought = getOutputAmount(tokenSold, tokenReserve, address(this).balance);
+    function tokenToEthSwap(uint256 tokenSold, uint256 minEth) public {
+        uint256 tokenReserve = getReserve();
+        uint256 ethBought = getOutputAmount(
+            tokenSold,
+            tokenReserve,
+            address(this).balance
+        );
 
         require(ethBought >= minEth, "Insufficient output ether amount");
 
