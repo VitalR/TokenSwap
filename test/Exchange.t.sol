@@ -13,7 +13,7 @@ contract ExchangeTest is Test {
 
     function setUp() public {
         owner = address(this);
-        token = new MintableERC20("Token Name", "TSB", 18);
+        token = new MintableERC20("Token Name", "TSB");
         exchange = new Exchange(address(token));
     }
 

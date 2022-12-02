@@ -1,20 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
+import "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
-contract Exchange {
+contract Exchange is ERC20 {
     address public token;
 
-    constructor(address _token) {
-        require(_token != address(0), "Invalid token address");
+    constructor(address token_) ERC20("Swap-V1", "SWP-V1") {
+        require(token_ != address(0), "Invalid token address");
 
-        token = _token;
+        token = token_;
     }
 
-    function addLiquidity(uint tokenAmount) public payable {
+    function addLiquidity(uint tokenAmount) public payable returns (uint) {
         if (getReserve() == 0) {
             IERC20(token).transferFrom(msg.sender, address(this), tokenAmount);
+
+            uint liquidity = address(this).balance;
+            _mint(msg.sender, liquidity);
+
+            return liquidity;
         } else {
             uint ethReserve = address(this).balance;
             uint tokenReserve = getReserve();
@@ -22,6 +28,12 @@ contract Exchange {
             require(tokenAmount >= tokenAmount_, "Insufficient token amount");
 
             IERC20(token).transferFrom(msg.sender, address(this), tokenAmount_);
+
+            uint lpSupply = totalSupply();
+            uint liquidity = (lpSupply * msg.value) / ethReserve;
+            _mint(msg.sender, liquidity);
+
+            return liquidity;
         }
     }
 
