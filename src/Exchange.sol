@@ -6,6 +6,15 @@ import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 import "forge-std/console.sol";
 
+interface IFactory {
+    function getExchange(address token) external view returns (address);
+}
+
+interface IExchange {
+    function ethToTokenSwap(uint256 minTokens) external payable;
+    function ethToTokenTransfer(uint minTokens, address recipient) external payable;
+}
+
 contract Exchange is ERC20 {
     address public token;
     address public factory;
@@ -72,6 +81,17 @@ contract Exchange is ERC20 {
         return (ethAmount, tokenAmount);
     }
 
+    function tokenToTokenSwap(uint tokenSold, uint minTokenBought, address tokenBought) public {
+        address exchange = IFactory(factory).getExchange(tokenBought);
+        require(exchange != address(this) && exchange != address(0), "Invalid exchange address");
+
+        uint tokenReserve = getReserve();
+        uint ethBought = getOutputAmount(tokenSold, tokenReserve, address(this).balance);   
+
+        IERC20(token).transferFrom(msg.sender, address(this), tokenSold);
+        IExchange(exchange).ethToTokenTransfer{ value: ethBought }(minTokenBought, msg.sender);
+    }
+
     function getReserve() public view returns (uint256) {
         return IERC20(token).balanceOf(address(this));
     }
@@ -93,7 +113,7 @@ contract Exchange is ERC20 {
     ) private pure returns (uint256) {
         require(inputReserve > 0 && outputReserve > 0, "Invalid reserves");
 
-        uint256 inputAmountWithFees = inputAmount * 99; // inputAmount * (100 - fee), fee == 1
+        uint256 inputAmountWithFees = inputAmount * 99; // inputAmount * (100 - fee), fee == 1 %
         uint256 numerator = outputReserve * inputAmountWithFees;
         uint256 denominator = (inputAmount * 100) + inputAmountWithFees;
 
@@ -116,7 +136,7 @@ contract Exchange is ERC20 {
         return getOutputAmount(tokenSold, tokenReserve, address(this).balance);
     }
 
-    function ethToTokenSwap(uint256 minTokens) public payable {
+    function ethToToken(uint256 minTokens, address recipient) private {
         uint256 tokenReserve = getReserve();
         uint256 tokenBought = getOutputAmount(
             msg.value,
@@ -126,7 +146,15 @@ contract Exchange is ERC20 {
 
         require(tokenBought >= minTokens, "Insufficient output token amount");
 
-        IERC20(token).transfer(msg.sender, tokenBought);
+        IERC20(token).transfer(recipient, tokenBought);
+    }
+
+    function ethToTokenSwap(uint minTokens) public payable {
+        ethToToken(minTokens, msg.sender);
+    }
+
+    function ethToTokenTransfer(uint minTokens, address recipient) public payable {
+        ethToToken(minTokens, recipient);
     }
 
     function tokenToEthSwap(uint256 tokenSold, uint256 minEth) public {
