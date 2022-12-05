@@ -4,13 +4,17 @@ pragma solidity ^0.8.15;
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
+import "forge-std/console.sol";
+
 contract Exchange is ERC20 {
     address public token;
+    address public factory;
 
     constructor(address token_) ERC20("Swap-V1", "SWP-V1") {
         require(token_ != address(0), "Invalid token address");
 
         token = token_;
+        factory = msg.sender;
     }
 
     function addLiquidity(uint256 tokenAmount)
@@ -47,13 +51,23 @@ contract Exchange is ERC20 {
     {
         require(lpAmount > 0, "Invalid lp token amount");
 
+        console.log(lpAmount);
         uint256 lpTotalAmount = totalSupply();
         uint256 ethAmount = (address(this).balance * lpAmount) / lpTotalAmount;
+        console.log(address(this).balance);
+        console.log(ethAmount);
         uint256 tokenAmount = (getReserve() * lpAmount) / lpTotalAmount;
+        console.log(getReserve());
+        console.log(tokenAmount);
 
         _burn(msg.sender, lpAmount);
-        payable(msg.sender).transfer(ethAmount);
+        console.log("lpAmount balance ", balanceOf(address(msg.sender)));
+        // payable(msg.sender).transfer(ethAmount);
+       
         IERC20(token).transfer(msg.sender, tokenAmount);
+
+        (bool success, ) = payable(msg.sender).call{value: ethAmount}("");
+        require(success, "withdraw failed");
 
         return (ethAmount, tokenAmount);
     }
