@@ -8,11 +8,10 @@ import "./mocks/MintableERC20.sol";
 contract ExchangeTest is Test {
     MintableERC20 public token;
     Exchange public exchange;
-    address owner;
+    address owner = address(11);
     address user = address(12);
 
     function setUp() public {
-        owner = address(11);
         token = new MintableERC20("Token Name", "TSB");
         exchange = new Exchange(address(token));
     }
@@ -144,5 +143,49 @@ contract ExchangeTest is Test {
         assertEq(exchange.balanceOf(address(owner)), 500 wei);
         assertEq(token.balanceOf(address(owner)), 1000 wei);
         assertEq(address(owner).balance, balanceBefore + 500 wei);
+    }
+
+    function testTokenToEtherSwap() public {
+        uint liqAmmount = 2000 wei;
+        startHoax(owner);
+        token.mint(address(owner), liqAmmount);
+        token.approve(address(exchange), liqAmmount);
+        exchange.addLiquidity{ value: 1000 wei }(liqAmmount);
+        vm.stopPrank();
+
+        uint tokenBalanceBefore = token.balanceOf(address(exchange));
+        uint etherBalanceBefore = address(exchange).balance;
+
+        vm.startPrank(user);
+        token.mint(address(user), 1000 wei);
+        token.approve(address(exchange), 1000 wei);
+        exchange.tokenToEthSwap(1000 wei, 497 wei);
+
+        assertEq(token.balanceOf(address(user)), 0);
+        assertEq(address(user).balance, 497 wei);
+
+        assertEq(tokenBalanceBefore + 1000 wei, token.balanceOf(address(exchange)));
+        assertEq(etherBalanceBefore - 497 wei, address(exchange).balance);
+    }
+
+    function testTokenToEtherSwapFails() public {
+        uint liqAmmount = 2000 wei;
+        startHoax(owner);
+        token.mint(address(owner), liqAmmount);
+        token.approve(address(exchange), liqAmmount);
+        exchange.addLiquidity{ value: 1000 wei }(liqAmmount);
+        vm.stopPrank();
+
+        assertEq(token.balanceOf(address(exchange)), 2000 wei);
+        assertEq(address(exchange).balance, 1000 wei);
+
+        vm.startPrank(user);
+        token.mint(address(user), 1000 wei);
+        token.approve(address(exchange), 1000 wei);
+        vm.expectRevert("Insufficient output ether amount");
+        exchange.tokenToEthSwap(1000 wei, 500 wei);
+
+        assertEq(token.balanceOf(address(exchange)), 2000 wei);
+        assertEq(address(exchange).balance, 1000 wei);
     }
 }
