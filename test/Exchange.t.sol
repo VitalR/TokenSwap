@@ -9,10 +9,10 @@ contract ExchangeTest is Test {
     MintableERC20 public token;
     Exchange public exchange;
     address owner;
-    address user = address(1);
+    address user = address(12);
 
     function setUp() public {
-        owner = address(this);
+        owner = address(11);
         token = new MintableERC20("Token Name", "TSB");
         exchange = new Exchange(address(token));
     }
@@ -26,6 +26,7 @@ contract ExchangeTest is Test {
 
         assertEq(address(exchange).balance, 0.5 ether);
         assertEq(token.balanceOf(address(exchange)), 1 ether);
+        // assertEq(exchange.balanceOf(address(owner)), 0.5 ether);
     }
 
     function testGetPrice() public {
@@ -96,24 +97,52 @@ contract ExchangeTest is Test {
         // assertEq(etherOutAmount, 500);
     }
 
-    function testRemoveLiquidity() public {
-        uint liqAmmount = 200 wei;
-        startHoax(owner);
+    function testRemoveAllLiquidity() public {
+        uint liqAmmount = 2000 wei;
+        // startHoax(owner);
+        vm.deal(address(owner), 1 ether);
+        vm.startPrank(address(owner));
+
+        console.log("owner eth balance ", address(owner).balance);
         token.mint(address(owner), liqAmmount);
+        assertEq(token.balanceOf(address(owner)), liqAmmount);
         token.approve(address(exchange), liqAmmount);
-        exchange.addLiquidity{ value: 100 wei }(liqAmmount);
-        vm.stopPrank();
 
-        // vm.startPrank(user);
-        uint minTokens = 18 wei;
-        hoax(user, 500 wei);
-        // token.mint(address(user), 1000 wei);
-        exchange.ethToTokenSwap{ value: 10 wei }(minTokens);
-        vm.stopPrank();
+        exchange.addLiquidity{ value: 1000 wei }(liqAmmount);
 
-        vm.startPrank(owner);
-        uint ethAmount;
-        uint tokenAmount;
-        (ethAmount, tokenAmount) = exchange.removeLiquidity(100 wei);
+        assertEq(exchange.balanceOf(address(owner)), 1000 wei);
+        assertEq(token.balanceOf(address(owner)), 0);
+
+        console.log("owner eth balance ", address(owner).balance);
+
+        exchange.removeLiquidity(1000 wei);
+    }
+
+   function testRemoveSomeLiquidity() public {
+        uint liqAmmount = 2000 wei;
+        // startHoax(owner);
+        vm.deal(address(owner), 1 ether);
+        vm.startPrank(address(owner));
+
+        console.log("owner eth balance ", address(owner).balance);
+        token.mint(address(owner), liqAmmount);
+        assertEq(token.balanceOf(address(owner)), liqAmmount);
+        token.approve(address(exchange), liqAmmount);
+
+        exchange.addLiquidity{ value: 1000 wei }(liqAmmount);
+
+        assertEq(exchange.balanceOf(address(owner)), 1000 wei);
+        assertEq(token.balanceOf(address(owner)), 0);
+        // assertEq(address(owner).balance, 1 ether - 1000 wei);
+        // vm.stopPrank();
+
+        console.log("owner eth balance ", address(owner).balance);
+
+        uint balanceBefore = address(owner).balance;
+        exchange.removeLiquidity(500 wei);
+
+        assertEq(exchange.balanceOf(address(owner)), 500 wei);
+        assertEq(token.balanceOf(address(owner)), 1000 wei);
+        assertEq(address(owner).balance, balanceBefore + 500 wei);
     }
 }
