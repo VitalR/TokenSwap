@@ -34,7 +34,7 @@ contract ExchangeTest is Test {
 
         assertEq(address(exchange).balance, 0.5 ether);
         assertEq(token.balanceOf(address(exchange)), 1 ether);
-        // assertEq(exchange.balanceOf(address(owner)), 0.5 ether);
+        assertEq(exchange.balanceOf(address(owner)), 0.5 ether);
     }
 
     function testGetPrice() public {
@@ -52,7 +52,7 @@ contract ExchangeTest is Test {
 
         // token per ether
         assertEq(tokenPrice, 2000);
-        // // ether per token
+        // ether per token
         assertEq(ethPrice, 500);
     }
 
@@ -168,6 +168,48 @@ contract ExchangeTest is Test {
         assertEq(etherBalanceBefore - 497 wei, address(exchange).balance);
     }
 
+    function testAffectsExchangeRate() public {
+        uint liqAmmount = 2000 wei;
+        startHoax(owner);
+        token.mint(address(owner), 4000 wei);
+        token.approve(address(exchange), liqAmmount);
+        exchange.addLiquidity{ value: 1000 wei }(liqAmmount);
+
+        uint ethOut = exchange.getEtherAmount(liqAmmount);
+        // console.log("ethOut ", ethOut);
+
+        assertEq(ethOut, 497 wei);
+
+        token.approve(address(exchange), 1000 wei);
+        exchange.tokenToEthSwap(1000 wei, 497 wei);
+
+        ethOut = exchange.getEtherAmount(liqAmmount);
+        // console.log("ethOut ", ethOut);
+
+        assertEq(ethOut, 250 wei);
+
+        // console.log(address(exchange).balance);
+
+        token.approve(address(exchange), 1000 wei);
+        exchange.tokenToEthSwap(1000 wei, 250 wei);
+
+        ethOut = exchange.getEtherAmount(liqAmmount);
+        // console.log("ethOut ", ethOut);
+
+        assertEq(ethOut, 125 wei);
+
+        // console.log(token.balanceOf(address(exchange)));
+        // console.log(address(exchange).balance);
+
+        exchange.ethToTokenSwap{ value: 125 }(1989 wei);
+
+        ethOut = exchange.getEtherAmount(liqAmmount);
+        // console.log("ethOut ", ethOut);
+
+        // console.log(token.balanceOf(address(exchange)));
+        // console.log(address(exchange).balance);
+    }
+
     function testTokenToEtherSwapFails() public {
         uint liqAmmount = 2000 wei;
         startHoax(owner);
@@ -182,11 +224,35 @@ contract ExchangeTest is Test {
         vm.startPrank(user);
         token.mint(address(user), 1000 wei);
         token.approve(address(exchange), 1000 wei);
-        vm.expectRevert("Insufficient output ether amount");
+        vm.expectRevert("tokenToEthSwap::Insufficient output ether amount");
         exchange.tokenToEthSwap(1000 wei, 500 wei);
 
         assertEq(token.balanceOf(address(exchange)), 2000 wei);
         assertEq(address(exchange).balance, 1000 wei);
+    }
+
+    function testEthToTokenSwap() public {
+        uint liqAmmount = 2000 wei;
+        startHoax(owner);
+        token.mint(address(owner), liqAmmount);
+        token.approve(address(exchange), liqAmmount);
+        exchange.addLiquidity{ value: 1000 wei }(liqAmmount);
+
+        uint ethOut = exchange.getEtherAmount(liqAmmount);
+        // console.log("ethOut ", ethOut);
+
+        assertEq(ethOut, 497 wei);
+
+        assertEq(address(exchange).balance, 1000 wei);
+        assertEq(token.balanceOf(address(exchange)), 2000 wei);
+
+        uint ethBalanceBefore = address(owner).balance;
+        uint tokenBalanceBefore = token.balanceOf(address(owner));
+
+        exchange.ethToTokenSwap{ value: 497 wei }(994 wei);
+
+        assertEq(address(owner).balance, ethBalanceBefore - 497 wei);
+        assertEq(token.balanceOf(address(owner)), tokenBalanceBefore + 994 wei);
     }
 
     function testTokenToTokenSwap() public {
@@ -202,25 +268,17 @@ contract ExchangeTest is Test {
         IExchange(exchange1).addLiquidity{ value: 1000 wei }(2000 wei);
         vm.stopPrank();
 
-        console.log(token1.balanceOf(address(exchange1)));
-
-        // assertEq(exchange1.balanceOf(address(owner)), 1000 wei);
-        // assertEq(address(exchange1).balanceOf(address(owner)), 1000 wei);
-
         vm.startPrank(user);
         deal(address(user), 1 ether);
         address exchange2 = factory.createExchange(address(token2));
         token2.mint(address(user), 4000 wei);
         token2.approve(address(exchange2), 1000 wei);
-        // token2.approve(address(exchange1), 4000 wei);
         IExchange(exchange2).addLiquidity{ value: 1000 wei }(1000 wei);
         vm.stopPrank();
 
         assertEq(token2.balanceOf(address(owner)), 0);
 
         uint exchange1BalanceBefore = token1.balanceOf(address(exchange1));
-        console.log("exchange1BalanceBefore-token1 ", exchange1BalanceBefore);
-        console.log("address(exchange1).balance ", address(exchange1).balance);
 
         // function tokenToTokenSwap(uint tokenSold, uint minTokenBought, address tokenBought) external;
         vm.startPrank(owner);
@@ -228,23 +286,17 @@ contract ExchangeTest is Test {
         IExchange(exchange1).tokenToTokenSwap(1000 wei, 497 wei, address(token2));
         vm.stopPrank();
 
-        console.log("address(exchange1).balance - after tokenToTokenSwap", address(exchange1).balance);
-
         assertEq(token1.balanceOf(address(exchange1)), exchange1BalanceBefore + 1000 wei);
         assertEq(token2.balanceOf(address(owner)), 497);
         assertEq(token2.balanceOf(address(exchange2)), 503);
 
         uint exchange2BalanceBefore = token2.balanceOf(address(exchange2));
-        console.log("exchange2BalanceBefore-token2 ", exchange2BalanceBefore);
-        console.log("address(exchange2).balance ", address(exchange2).balance);
 
         vm.startPrank(user);
         token2.approve(address(exchange2), 1000 wei);
         IExchange(exchange2).tokenToTokenSwap(744 wei, 1492 wei, address(token1));
 
-        assertEq(token2.balanceOf(address(exchange2)), exchange2BalanceBefore + 500 wei);
-        assertEq(token1.balanceOf(address(user)), 1000);
-
-        console.log("address(exchange2).balance - after tokenToTokenSwap ", address(exchange2).balance);
+        assertEq(token2.balanceOf(address(exchange2)), exchange2BalanceBefore + 744 wei);
+        assertEq(token1.balanceOf(address(user)), 1492);
     }
 }
