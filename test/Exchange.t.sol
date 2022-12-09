@@ -18,7 +18,7 @@ contract ExchangeTest is Test {
     }
 
     function testInitialState() public {
-        assertEq(exchange.name(), "Swap-V1");
+        assertEq(exchange.name(), "LP-TokenSwap-V1");
         assertEq(exchange.symbol(), "SWP-V1");
         assertEq(exchange.totalSupply(), 0 wei);
         assertEq(exchange.factory(), address(this));

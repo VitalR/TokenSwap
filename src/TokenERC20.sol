@@ -8,7 +8,7 @@ contract TokenERC20 is ERC20 {
         string memory _name,
         string memory _symbol, 
         uint8 _decimals,
-        uint _initialSupply
+        uint256 _initialSupply
     ) ERC20 (_name, _symbol, _decimals) {
         _mint(msg.sender, _initialSupply);
     }

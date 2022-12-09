@@ -23,7 +23,7 @@ contract FactoryTest is Test {
     }
 
     function testCreateExchangeWithZeroAddressFails() public {
-        vm.expectRevert("Invalid token address");
+        vm.expectRevert("createExchange::Invalid token address");
         exchange = factory.createExchange(address(0));
     }
 
@@ -31,7 +31,7 @@ contract FactoryTest is Test {
         exchange = factory.createExchange(address(token));
         assertEq(factory.getExchange(address(token)), address(exchange));
 
-        vm.expectRevert("Exchange already exists");
+        vm.expectRevert("createExchange::Exchange already exists");
         exchange = factory.createExchange(address(token));
     }
 }

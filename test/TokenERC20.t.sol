@@ -18,9 +18,9 @@ contract TokenERC20Test is DSTestPlus {
     }
 
     function testInitialState() public {
-        assertEq(token.name(), "Token Name");
-        assertEq(token.symbol(), "TSB");
-        assertEq(token.decimals(), 18);
-        assertEq(token.balanceOf(address(this)), 1000000000000000000000);
+        assertEq(token.name(), name);
+        assertEq(token.symbol(), symbol);
+        assertEq(token.decimals(), decimals);
+        assertEq(token.balanceOf(address(this)), initialSupply);
     }
 }

@@ -12,15 +12,15 @@ interface IExchange {
     function balanceOf(address account) external view returns (uint256);
     function addLiquidity(uint256 tokenAmount) external payable returns (uint256);
     function ethToTokenSwap(uint256 minTokens) external payable;
-    function ethToTokenTransfer(uint minTokens, address recipient) external payable;
-    function tokenToTokenSwap(uint tokenSold, uint minTokenBought, address tokenBought) external;
+    function ethToTokenTransfer(uint256 minTokens, address recipient) external payable;
+    function tokenToTokenSwap(uint256 tokenSold, uint256 minTokenBought, address tokenBought) external;
 }
 
 contract Exchange is ERC20 {
     address public token;
     address public factory;
 
-    constructor(address token_) ERC20("Swap-V1", "SWP-V1") {
+    constructor(address token_) ERC20("LP-TokenSwap-V1", "SWP-V1") {
         require(token_ != address(0), "constructor::Invalid token address");
 
         token = token_;
@@ -74,12 +74,12 @@ contract Exchange is ERC20 {
         return (ethAmount, tokenAmount);
     }
 
-    function tokenToTokenSwap(uint tokenSold, uint minTokenBought, address tokenBought) public {
+    function tokenToTokenSwap(uint256 tokenSold, uint256 minTokenBought, address tokenBought) public {
         address exchange = IFactory(factory).getExchange(tokenBought);
         require(exchange != address(this) && exchange != address(0), "tokenToTokenSwap::Invalid exchange address");
 
-        uint tokenReserve = getReserve();
-        uint ethBought = getOutputAmount(tokenSold, tokenReserve, address(this).balance);   
+        uint256 tokenReserve = getReserve();
+        uint256 ethBought = getOutputAmount(tokenSold, tokenReserve, address(this).balance);   
 
         IERC20(token).transferFrom(msg.sender, address(this), tokenSold);
         IExchange(exchange).ethToTokenTransfer{ value: ethBought }(minTokenBought, msg.sender);
@@ -98,11 +98,11 @@ contract Exchange is ERC20 {
         IERC20(token).transfer(recipient, tokenBought);
     }
 
-    function ethToTokenSwap(uint minTokens) public payable {
+    function ethToTokenSwap(uint256 minTokens) public payable {
         ethToToken(minTokens, msg.sender);
     }
 
-    function ethToTokenTransfer(uint minTokens, address recipient) public payable {
+    function ethToTokenTransfer(uint256 minTokens, address recipient) public payable {
         ethToToken(minTokens, recipient);
     }
 
