@@ -10,10 +10,8 @@ contract UniswapV2PairTest is Test {
     MintableERC20 token0;
     MintableERC20 token1;
     UniswapV2Pair pair;
-    // TestUser testUser;
 
     function setUp() public {
-        // testUser = new TestUser();
 
         token0 = new MintableERC20("Token A", "TKNA");
         token1 = new MintableERC20("Token B", "TKNB");
@@ -75,6 +73,55 @@ contract UniswapV2PairTest is Test {
         assertEq(pair.balanceOf(address(this)), 2 ether - 1000 wei);
         assertEq(pair.totalSupply(), 2 ether);
         assertReserves(3 ether, 2 ether);
+    }
+
+    function testBurn() public {
+        pair.initialize(address(token0), address(token1));
+        token0.transfer(address(pair), 1 ether);
+        token1.transfer(address(pair), 1 ether);
+
+        pair.mint(address(this));
+        uint lpBalanceBefore = pair.balanceOf(address(this));
+
+        assertEq(pair.balanceOf(address(this)), 1 ether - 1000 wei);
+        assertEq(pair.totalSupply(), 1 ether);
+        assertReserves(1 ether, 1 ether);
+
+        pair.burn(address(this));
+
+        assertEq(pair.balanceOf(address(this)), 0);
+        assertEq(pair.totalSupply(), 1 ether - lpBalanceBefore);
+        assertReserves(1000 wei, 1000 wei);
+
+        assertEq(token0.balanceOf(address(this)), 10 ether - 1000 wei);
+        assertEq(token1.balanceOf(address(this)), 10 ether - 1000 wei);
+
+        assertEq(token0.balanceOf(address(pair)), 1000 wei);
+        assertEq(token1.balanceOf(address(pair)), 1000 wei);
+    }
+
+    function testBurnUnbalanced() public {
+        pair.initialize(address(token0), address(token1));
+        token0.transfer(address(pair), 1 ether);
+        token1.transfer(address(pair), 1 ether);
+
+        pair.mint(address(this));
+
+        token0.transfer(address(pair), 2 ether);
+        token1.transfer(address(pair), 1 ether);
+
+        pair.mint(address(this)); // + 1 LP
+        uint lpBalanceBefore = pair.balanceOf(address(this));
+
+        assertEq(pair.balanceOf(address(this)), 2 ether - 1000 wei);
+        assertEq(pair.totalSupply(), 2 ether);
+        assertReserves(3 ether, 2 ether);
+
+        pair.burn(address(this));
+
+        assertEq(pair.balanceOf(address(this)), 0);
+        assertEq(pair.totalSupply(), 2 ether - (2 ether - 1000 wei)); // - lpBalanceBefore
+        assertReserves(1500 wei, 1000 wei);
     }
 
 }

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.15;
 
 import "solmate/tokens/ERC20.sol";
+import "solmate/utils/SafeTransferLib.sol";
 import "./libraries/Math.sol";
 
 import "forge-std/console.sol";
@@ -24,8 +25,9 @@ contract UniswapV2Pair is ERC20, Math {
     uint private reserve1;
 
     event Mint(address indexed sender, uint amount0, uint amount1);
+    event Burn(address indexed sender, uint amount0, uint amount1, address to);
 
-    constructor() ERC20("UniswapV2Pair", "LP-UNI-V2", 18) {}
+    constructor() ERC20("LP UniswapV2 Pair", "LP-UNI-V2", 18) {}
     
     function initialize(address token0_, address token1_) public {
         if (token0 != address(0) || token1 != address(0))
@@ -39,20 +41,20 @@ contract UniswapV2Pair is ERC20, Math {
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balance1 = IERC20(token1).balanceOf(address(this));
         uint amount0 = balance0 - reserve0;
-        console.log(amount0);
+        console.log("mint:amount0", amount0);
         uint amount1 = balance1 - reserve1;
-        console.log(amount1);
+        console.log("mint:amount1", amount1);
 
         if (totalSupply == 0) {
             liquidity = Math.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
             _mint(address(0), MINIMUM_LIQUIDITY);
-            console.log(liquidity);
+            console.log("mint:liquidity", liquidity);
         } else {
             liquidity = Math.min(
                 (amount0 * totalSupply) / reserve0,
                 (amount1 * totalSupply) / reserve1
             );
-            console.log(liquidity);
+            console.log("mint:liquidity", liquidity);
         }
 
         if (liquidity <= 0) revert InsufficientLiquidityMinted();
@@ -62,6 +64,39 @@ contract UniswapV2Pair is ERC20, Math {
         _update(balance0, balance1);
 
         emit Mint(msg.sender, amount0, amount1);
+    }
+
+    function burn(address to) public returns (uint amount0, uint amount1) {
+        uint balance0 = IERC20(token0).balanceOf(address(this));
+        console.log("burn:balance0", balance0);
+        uint balance1 = IERC20(token1).balanceOf(address(this));
+        console.log("burn:balance0", balance1);
+        uint liquidity = balanceOf[msg.sender];
+        console.log("burn:liquidity-msg.sender", liquidity);
+
+        amount0 = (balance0 * liquidity) / totalSupply;
+        console.log("burn:amount0", amount0);
+        amount1 = (balance1 * liquidity) / totalSupply;
+        console.log("burn:amount0", amount1);
+        console.log("burn:totalSupply", totalSupply);
+
+        if (amount0 == 0 || amount1 == 0) revert InsufficientLiquidityMinted();
+
+        _burn(msg.sender, liquidity);
+
+        SafeTransferLib.safeTransfer(ERC20(token0), to, amount0);
+        SafeTransferLib.safeTransfer(ERC20(token1), to, amount1);
+
+        balance0 = IERC20(token0).balanceOf(address(this));
+        console.log("burn:balance0", balance0);
+        balance1 = IERC20(token1).balanceOf(address(this));
+        console.log("burn:balance1", balance1);
+
+        console.log(totalSupply);
+
+        _update(balance0, balance1);
+
+        emit Burn(msg.sender, amount0, amount1, to);
     }
 
     function _update(uint balance0_, uint balance1_) private {
