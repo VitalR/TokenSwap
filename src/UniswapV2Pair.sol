@@ -13,6 +13,7 @@ interface IERC20 {
 
 error AlreadyInitialized();
 error InsufficientLiquidityMinted();
+error InsufficientLiquidityBurned();
 
 contract UniswapV2Pair is ERC20, Math {
 
@@ -77,10 +78,10 @@ contract UniswapV2Pair is ERC20, Math {
         amount0 = (balance0 * liquidity) / totalSupply;
         console.log("burn:amount0", amount0);
         amount1 = (balance1 * liquidity) / totalSupply;
-        console.log("burn:amount0", amount1);
+        console.log("burn:amount1", amount1);
         console.log("burn:totalSupply", totalSupply);
 
-        if (amount0 == 0 || amount1 == 0) revert InsufficientLiquidityMinted();
+        if (amount0 == 0 || amount1 == 0) revert InsufficientLiquidityBurned();
 
         _burn(msg.sender, liquidity);
 
