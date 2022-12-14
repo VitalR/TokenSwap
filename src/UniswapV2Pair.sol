@@ -2,7 +2,6 @@
 pragma solidity ^0.8.15;
 
 import "solmate/tokens/ERC20.sol";
-import "solmate/utils/SafeTransferLib.sol";
 import "./libraries/Math.sol";
 
 import "forge-std/console.sol";
@@ -14,6 +13,7 @@ interface IERC20 {
 error AlreadyInitialized();
 error InsufficientLiquidityMinted();
 error InsufficientLiquidityBurned();
+error TransferFailed();
 
 contract UniswapV2Pair is ERC20, Math {
 
@@ -85,8 +85,8 @@ contract UniswapV2Pair is ERC20, Math {
 
         _burn(msg.sender, liquidity);
 
-        SafeTransferLib.safeTransfer(ERC20(token0), to, amount0);
-        SafeTransferLib.safeTransfer(ERC20(token1), to, amount1);
+        _safeTransfer(token0, to, amount0);
+        _safeTransfer(token1, to, amount1);
 
         balance0 = IERC20(token0).balanceOf(address(this));
         console.log("burn:balance0", balance0);
@@ -100,13 +100,21 @@ contract UniswapV2Pair is ERC20, Math {
         emit Burn(msg.sender, amount0, amount1, to);
     }
 
+    function getReserves() public view returns (uint, uint) {
+        return (reserve0, reserve1);
+    }
+
     function _update(uint balance0_, uint balance1_) private {
         reserve0 = balance0_;
         reserve1 = balance1_;
     }
 
-    function getReserves() public view returns (uint, uint) {
-        return (reserve0, reserve1);
+    function _safeTransfer(address token, address to, uint value) private {
+        (bool success, bytes memory data) = token.call(
+            abi.encodeWithSignature("transfer(address,uint256)", to, value)
+        );
+        if (!success || (data.length != 0 && !abi.decode(data, (bool))))
+            revert TransferFailed();
     }
 
 }
