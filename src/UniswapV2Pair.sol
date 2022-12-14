@@ -3,6 +3,7 @@ pragma solidity ^0.8.15;
 
 import "solmate/tokens/ERC20.sol";
 import "./libraries/Math.sol";
+import "./libraries/UQ112x112.sol";
 
 import "forge-std/console.sol";
 
@@ -14,16 +15,18 @@ error AlreadyInitialized();
 error InsufficientLiquidityMinted();
 error InsufficientLiquidityBurned();
 error TransferFailed();
+error BalanceOverflow();
 
 contract UniswapV2Pair is ERC20, Math {
+    using UQ112x112 for uint224;
 
     uint constant MINIMUM_LIQUIDITY = 1000;
 
     address public token0;
     address public token1;
 
-    uint private reserve0;
-    uint private reserve1;
+    uint112 private reserve0;
+    uint112 private reserve1;
 
     event Mint(address indexed sender, uint amount0, uint amount1);
     event Burn(address indexed sender, uint amount0, uint amount1, address to);
@@ -39,11 +42,12 @@ contract UniswapV2Pair is ERC20, Math {
     }
 
     function mint(address to) public returns (uint liquidity) {
+        (uint112 reserve0_, uint112 reserve1_) = getReserves();
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balance1 = IERC20(token1).balanceOf(address(this));
-        uint amount0 = balance0 - reserve0;
+        uint amount0 = balance0 - reserve0_;
         console.log("mint:amount0", amount0);
-        uint amount1 = balance1 - reserve1;
+        uint amount1 = balance1 - reserve1_;
         console.log("mint:amount1", amount1);
 
         if (totalSupply == 0) {
@@ -52,8 +56,8 @@ contract UniswapV2Pair is ERC20, Math {
             console.log("mint:liquidity", liquidity);
         } else {
             liquidity = Math.min(
-                (amount0 * totalSupply) / reserve0,
-                (amount1 * totalSupply) / reserve1
+                (amount0 * totalSupply) / reserve0_,
+                (amount1 * totalSupply) / reserve1_
             );
             console.log("mint:liquidity", liquidity);
         }
@@ -100,13 +104,16 @@ contract UniswapV2Pair is ERC20, Math {
         emit Burn(msg.sender, amount0, amount1, to);
     }
 
-    function getReserves() public view returns (uint, uint) {
+    function getReserves() public view returns (uint112, uint112) {
         return (reserve0, reserve1);
     }
 
     function _update(uint balance0_, uint balance1_) private {
-        reserve0 = balance0_;
-        reserve1 = balance1_;
+        if (balance0_ > type(uint112).max || balance1_ > type(uint112).max)
+            revert BalanceOverflow();
+            
+        reserve0 = uint112(balance0_);
+        reserve1 = uint112(balance1_);
     }
 
     function _safeTransfer(address token, address to, uint value) private {
