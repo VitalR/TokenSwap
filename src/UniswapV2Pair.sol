@@ -14,8 +14,11 @@ interface IERC20 {
 error AlreadyInitialized();
 error InsufficientLiquidityMinted();
 error InsufficientLiquidityBurned();
-error TransferFailed();
+error InsufficientLiquidity();
+error InsufficientOutputAmount();
 error BalanceOverflow();
+error TransferFailed();
+error InvalidK();
 
 contract UniswapV2Pair is ERC20, Math {
     using UQ112x112 for uint224;
@@ -30,6 +33,7 @@ contract UniswapV2Pair is ERC20, Math {
 
     event Mint(address indexed sender, uint amount0, uint amount1);
     event Burn(address indexed sender, uint amount0, uint amount1, address to);
+    event Swap(address indexed sender, uint amount0Out, uint amount1Out, address indexed to);
 
     constructor() ERC20("LP UniswapV2 Pair", "LP-UNI-V2", 18) {}
     
@@ -104,6 +108,34 @@ contract UniswapV2Pair is ERC20, Math {
         emit Burn(msg.sender, amount0, amount1, to);
     }
 
+    function swap(uint amount0Out, uint amount1Out, address to) public {
+        if (amount0Out == 0 && amount1Out == 0)
+            revert InsufficientOutputAmount();
+
+        (uint112 reserve0_, uint112 reserve1_) = getReserves();
+
+        if (amount0Out > reserve0_ || amount1Out > reserve1_)
+            revert InsufficientLiquidity();
+
+        uint balance0 = IERC20(token0).balanceOf(address(this)) - amount0Out;
+        console.log("balance0 ", balance0);
+        uint balance1 = IERC20(token1).balanceOf(address(this)) - amount1Out;
+        console.log("balance1 ", balance1);
+
+        console.log("balance0 * balance1 ", balance0 * balance1);
+        console.log("uint256(reserve0_) * uint256(reserve1_) ", uint256(reserve0_) * uint256(reserve1_));
+
+        if (balance0 * balance1 < uint256(reserve0_) * uint256(reserve1_))
+            revert InvalidK();
+
+        _update(balance0, balance1);
+
+        if (amount0Out > 0) _safeTransfer(token0, to, amount0Out);
+        if (amount1Out > 0) _safeTransfer(token1, to, amount1Out);
+
+        emit Swap(msg.sender, amount0Out, amount1Out, to);
+    }
+
     function getReserves() public view returns (uint112, uint112) {
         return (reserve0, reserve1);
     }
@@ -111,7 +143,7 @@ contract UniswapV2Pair is ERC20, Math {
     function _update(uint balance0_, uint balance1_) private {
         if (balance0_ > type(uint112).max || balance1_ > type(uint112).max)
             revert BalanceOverflow();
-            
+
         reserve0 = uint112(balance0_);
         reserve1 = uint112(balance1_);
     }

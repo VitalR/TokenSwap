@@ -177,4 +177,37 @@ contract UniswapV2PairTest is Test {
         pair.burn(address(this));
     }
 
+    function testSwapBasicScenario() public {
+        pair.initialize(address(token0), address(token1));
+        token0.transfer(address(pair), 1 ether);
+        token1.transfer(address(pair), 2 ether);
+        pair.mint(address(this));
+
+        token0.transfer(address(pair), 0.1 ether);
+        pair.swap(0, 0.18 ether, address(this));
+
+        assertEq(token0.balanceOf(address(this)), 10 ether - 1 ether - 0.1 ether, 
+            "Unexpected token0 balance");
+        assertEq(token1.balanceOf(address(this)), 10 ether - 2 ether + 0.18 ether, 
+            "Unexpected token1 balance");
+
+        assertReserves(1 ether + 0.1 ether, 2 ether - 0.18 ether);
+    }
+
+    function testSwapBacisScenarioReverseDirection() public {
+        pair.initialize(address(token0), address(token1));
+        token0.transfer(address(pair), 1 ether);
+        token1.transfer(address(pair), 2 ether);
+        pair.mint(address(this));
+
+        token1.transfer(address(pair), 0.2 ether);
+        pair.swap(0.09 ether, 0, address(this));
+
+        assertEq(token0.balanceOf(address(this)), 10 ether - 1 ether + 0.09 ether,
+            "Unexpected token0 balance");
+        assertEq(token1.balanceOf(address(this)), 10 ether - 2 ether - 0.2 ether,
+            "Unexpected token1 balance");
+        assertReserves(1 ether - 0.09 ether, 2 ether + 0.2 ether);
+    }
+
 }
