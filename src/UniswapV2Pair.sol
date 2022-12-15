@@ -30,10 +30,15 @@ contract UniswapV2Pair is ERC20, Math {
 
     uint112 private reserve0;
     uint112 private reserve1;
+    uint32 private blockTimestampLast;
+
+    uint public price0CumulativeLast;
+    uint public price1CumulativeLast;
 
     event Mint(address indexed sender, uint amount0, uint amount1);
     event Burn(address indexed sender, uint amount0, uint amount1, address to);
     event Swap(address indexed sender, uint amount0Out, uint amount1Out, address indexed to);
+    event Sync(uint112 reserve0, uint112 reserve1);
 
     constructor() ERC20("LP UniswapV2 Pair", "LP-UNI-V2", 18) {}
     
@@ -46,7 +51,7 @@ contract UniswapV2Pair is ERC20, Math {
     }
 
     function mint(address to) public returns (uint liquidity) {
-        (uint112 reserve0_, uint112 reserve1_) = getReserves();
+        (uint112 reserve0_, uint112 reserve1_, ) = getReserves();
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balance1 = IERC20(token1).balanceOf(address(this));
         uint amount0 = balance0 - reserve0_;
@@ -70,7 +75,7 @@ contract UniswapV2Pair is ERC20, Math {
 
         _mint(to, liquidity);
 
-        _update(balance0, balance1);
+        _update(balance0, balance1, reserve0_, reserve1_);
 
         emit Mint(msg.sender, amount0, amount1);
     }
@@ -103,7 +108,8 @@ contract UniswapV2Pair is ERC20, Math {
 
         console.log(totalSupply);
 
-        _update(balance0, balance1);
+        (uint112 reserve0_, uint112 reserve1_, ) = getReserves();
+        _update(balance0, balance1, reserve0_, reserve1_);
 
         emit Burn(msg.sender, amount0, amount1, to);
     }
@@ -112,7 +118,7 @@ contract UniswapV2Pair is ERC20, Math {
         if (amount0Out == 0 && amount1Out == 0)
             revert InsufficientOutputAmount();
 
-        (uint112 reserve0_, uint112 reserve1_) = getReserves();
+        (uint112 reserve0_, uint112 reserve1_, ) = getReserves();
 
         if (amount0Out > reserve0_ || amount1Out > reserve1_)
             revert InsufficientLiquidity();
@@ -128,7 +134,7 @@ contract UniswapV2Pair is ERC20, Math {
         if (balance0 * balance1 < uint256(reserve0_) * uint256(reserve1_))
             revert InvalidK();
 
-        _update(balance0, balance1);
+        _update(balance0, balance1, reserve0_, reserve1_);
 
         if (amount0Out > 0) _safeTransfer(token0, to, amount0Out);
         if (amount1Out > 0) _safeTransfer(token1, to, amount1Out);
@@ -136,16 +142,30 @@ contract UniswapV2Pair is ERC20, Math {
         emit Swap(msg.sender, amount0Out, amount1Out, to);
     }
 
-    function getReserves() public view returns (uint112, uint112) {
-        return (reserve0, reserve1);
+    function getReserves() public view returns (uint112, uint112, uint32) {
+        return (reserve0, reserve1, blockTimestampLast);
     }
 
-    function _update(uint balance0_, uint balance1_) private {
+    function _update(uint balance0_, uint balance1_, uint112 reserve0_, uint112 reserve1_) private {
         if (balance0_ > type(uint112).max || balance1_ > type(uint112).max)
             revert BalanceOverflow();
 
+        unchecked {
+            uint32 timeElapsed = uint32(block.timestamp) - blockTimestampLast;
+
+            if (timeElapsed > 0 && reserve0_ > 0 && reserve1_ > 0) {
+                price0CumulativeLast +=
+                    uint(UQ112x112.encode(reserve1_).uqdiv(reserve0_)) * timeElapsed;
+                price1CumulativeLast +=
+                    uint(UQ112x112.encode(reserve0_).uqdiv(reserve1_)) * timeElapsed;
+            }
+        }
+
         reserve0 = uint112(balance0_);
         reserve1 = uint112(balance1_);
+        blockTimestampLast = uint32(block.timestamp);
+
+        emit Sync(reserve0, reserve1);
     }
 
     function _safeTransfer(address token, address to, uint value) private {
