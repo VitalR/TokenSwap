@@ -1,18 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import "./UniswapV2Factory.sol";
-
-interface IUniswapV2Factory {
-    function createPair(address, address) external returns (address);
-    function pairs(address, address) external returns (address);
-}
-
-error InsufficientAAmount();
-error InsufficientBAmount();
-error SafeTransferFailed();
+import "./UniswapV2Library.sol";
 
 contract UniswapV2Router {
+
+    error InsufficientAAmount();
+    error InsufficientBAmount();
+    error SafeTransferFailed();
 
     IUniswapV2Factory factory;
 
@@ -54,15 +49,14 @@ contract UniswapV2Router {
         liquidity = IUniswapV2Pair(pair).mint(to);
     }
 
-
-    function _caulculateLiquidity(
+    function _calculateLiquidity(
         address tokenA,
         address tokenB,
         uint amountADesired,
         uint amountBDesired,
         uint amountAMin,
         uint amountBMin
-    ) internal returns (uint amountA, uint amountB) {
+    ) internal view returns (uint amountA, uint amountB) {
         
         (uint reserveA, uint reserveB) = UniswapV2Library.getReserves(
             address(factory),
@@ -93,9 +87,18 @@ contract UniswapV2Router {
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
             }
         }
-
-
     }
 
-
+    function _safeTransferFrom(
+        address token,
+        address from,
+        address to,
+        uint value
+    ) private {
+        (bool success, bytes memory data) = token.call(
+            abi.encodeWithSignature("transferFrom(address,address,uint256)", from, to, value)
+        );
+        if (!success || (data.length != 0 && !abi.decode(data, (bool))))
+            revert SafeTransferFailed();
+    }
 }

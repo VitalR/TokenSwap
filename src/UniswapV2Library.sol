@@ -1,16 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
+import "src/interfaces/IUniswapV2Pair.sol";
+import "src/interfaces/IUniswapV2Factory.sol";
 import { UniswapV2Pair } from "./UniswapV2Pair.sol";
-
-interface IUniswapV2Pair {
-    function getReserves() external view returns (uint112, uint112, uint32);
-}
-
-interface IUniswapV2Factory {
-    function createPair(address, address) external returns (address);
-    function pairs(address, address) external returns (address);
-}
 
 error InsufficientAmount();
 error InsufficientLiquidity();
@@ -71,5 +64,4 @@ library UniswapV2Library {
             )
         );
     }
-
 }

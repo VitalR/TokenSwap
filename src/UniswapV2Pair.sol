@@ -11,17 +11,17 @@ interface IERC20 {
     function balanceOf(address) external returns (uint);
 }
 
-error AlreadyInitialized();
-error InsufficientLiquidityMinted();
-error InsufficientLiquidityBurned();
-error InsufficientLiquidity();
-error InsufficientOutputAmount();
-error BalanceOverflow();
-error TransferFailed();
-error InvalidK();
-
 contract UniswapV2Pair is ERC20, Math {
     using UQ112x112 for uint224;
+
+    error AlreadyInitialized();
+    error InsufficientLiquidityMinted();
+    error InsufficientLiquidityBurned();
+    error InsufficientLiquidity();
+    error InsufficientOutputAmount();
+    error BalanceOverflow();
+    error TransferFailed();
+    error InvalidK();
 
     uint constant MINIMUM_LIQUIDITY = 1000;
 

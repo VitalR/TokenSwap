@@ -2,10 +2,7 @@
 pragma solidity ^0.8.15;
 
 import "./UniswapV2Pair.sol";
-
-interface IUniswapV2Pair {
-    function initialize(address, address) external;
-}
+import "src/interfaces/IUniswapV2Pair.sol";
 
 error IdenticalAddresses();
 error ZeroAddress();
