@@ -85,7 +85,7 @@ contract UniswapV2Pair is ERC20, Math {
         console.log("burn:balance0", balance0);
         uint balance1 = IERC20(token1).balanceOf(address(this));
         console.log("burn:balance0", balance1);
-        uint liquidity = balanceOf[msg.sender];
+        uint liquidity = balanceOf[address(this)];
         console.log("burn:liquidity-msg.sender", liquidity);
 
         amount0 = (balance0 * liquidity) / totalSupply;
@@ -96,7 +96,7 @@ contract UniswapV2Pair is ERC20, Math {
 
         if (amount0 == 0 || amount1 == 0) revert InsufficientLiquidityBurned();
 
-        _burn(msg.sender, liquidity);
+        _burn(address(this), liquidity);
 
         _safeTransfer(token0, to, amount0);
         _safeTransfer(token1, to, amount1);

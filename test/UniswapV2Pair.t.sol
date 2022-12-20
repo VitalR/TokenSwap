@@ -88,6 +88,8 @@ contract UniswapV2PairTest is Test {
         assertEq(pair.totalSupply(), 1 ether);
         assertReserves(1 ether, 1 ether);
 
+        uint liquidity = pair.balanceOf(address(this));
+        pair.transfer(address(pair), liquidity);
         pair.burn(address(this));
 
         assertEq(pair.balanceOf(address(this)), 0);
@@ -118,6 +120,8 @@ contract UniswapV2PairTest is Test {
         assertEq(pair.totalSupply(), 2 ether);
         assertReserves(3 ether, 2 ether);
 
+        uint liquidity = pair.balanceOf(address(this));
+        pair.transfer(address(pair), liquidity);
         pair.burn(address(this));
 
         assertEq(pair.balanceOf(address(this)), 0);
@@ -151,6 +155,8 @@ contract UniswapV2PairTest is Test {
         assertEq(pair.balanceOf(address(this)), 1 ether);
         assertEq(pair.totalSupply(), 2 ether);
 
+        uint liquidity = pair.balanceOf(address(this));
+        pair.transfer(address(pair), liquidity);
         pair.burn(address(this));
 
         assertEq(pair.balanceOf(address(this)), 0);
