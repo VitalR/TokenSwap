@@ -49,6 +49,24 @@ contract UniswapV2Router {
         liquidity = IUniswapV2Pair(pair).mint(to);
     }
 
+    function removeLiquidity(
+        address tokenA,
+        address tokenB,
+        uint liquidity,
+        uint amountAMin,
+        uint amountBMin,
+        address to
+    ) public returns (uint amountA, uint amountB) {
+
+        address pair = UniswapV2Library.pairFor(address(factory), tokenA, tokenB);
+
+        IUniswapV2Pair(pair).transferFrom(msg.sender, pair, liquidity);
+        (amountA, amountB) = IUniswapV2Pair(pair).burn(to);
+
+        if (amountA < amountAMin) revert InsufficientAAmount();
+        if (amountB < amountBMin) revert InsufficientBAmount();
+    }
+
     function _calculateLiquidity(
         address tokenA,
         address tokenB,

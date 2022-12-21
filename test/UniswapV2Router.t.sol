@@ -46,7 +46,7 @@ contract UniswapV2RouterTest is Test {
         );
 
         address pair = factory.pairs(address(tokenA), address(tokenB));
-        console.log(address(pair));
+        // console.log(address(pair));
         assertEq(pair, 0xDd114eC5CC597Cabd319dC9A7968f36a36642a26);
     }
 
@@ -196,6 +196,44 @@ contract UniswapV2RouterTest is Test {
         assertEq(amountA, 1.8 ether);
         assertEq(amountB, 0.9 ether);
         assertEq(liquidity, 1272792206135785543);
+    }
+
+    function testRemoveLiquidity() public {
+        tokenA.approve(address(router), 1 ether);
+        tokenB.approve(address(router), 1 ether);
+
+        router.addLiquidity(
+            address(tokenA), 
+            address(tokenB), 
+            1 ether,
+            1 ether,
+            1 ether,
+            1 ether,
+            address(this)
+        );
+
+        address pair = factory.pairs(address(tokenA), address(tokenB));
+        UniswapV2Pair lpToken = UniswapV2Pair(pair);
+        uint liquidity = lpToken.balanceOf(address(this));
+
+        lpToken.approve(address(router), liquidity);
+
+        router.removeLiquidity(
+            address(tokenA), 
+            address(tokenB),
+            liquidity,
+            1 ether - 1000 wei,
+            1 ether - 1000 wei,
+            address(this)
+        );
+
+        (uint reserve0, uint reserve1, ) = lpToken.getReserves();
+        assertEq(reserve0, 1000);
+        assertEq(reserve1, 1000);
+        assertEq(lpToken.balanceOf(address(this)), 0);
+        assertEq(lpToken.totalSupply(), 1000);
+        assertEq(tokenA.balanceOf(address(this)), 10 ether - 1000 wei);
+        assertEq(tokenB.balanceOf(address(this)), 10 ether - 1000 wei);
     }
 
 }
