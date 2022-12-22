@@ -7,6 +7,7 @@ import { UniswapV2Pair } from "./UniswapV2Pair.sol";
 
 error InsufficientAmount();
 error InsufficientLiquidity();
+error InvalidPath();
 
 library UniswapV2Library {
 
@@ -63,5 +64,37 @@ library UniswapV2Library {
                 )
             )
         );
+    }
+
+    function getAmountOut(
+        uint amountIn,
+        uint reserveIn,
+        uint reserveOut
+    ) public pure returns (uint) {
+        if (amountIn == 0) revert InsufficientAmount();
+        if (reserveIn == 0 || reserveOut == 0) revert InsufficientLiquidity();
+
+        uint amountInWithFee = amountIn * 997; // 1000 - 3, where fee is 3%
+        uint numerator = amountInWithFee * reserveOut;
+        uint denominator = (reserveIn * 1000) + amountInWithFee;
+
+        return numerator / denominator;
+    }
+
+    function getAmountsOut(
+        address factory,
+        uint amountIn,
+        address[] memory path
+    ) public returns (uint[] memory) {
+        if (path.length < 2) revert InvalidPath();
+        uint[] memory amounts = new uint[](path.length);
+        amounts[0] = amountIn;
+
+        for (uint i; i < path.length - 1; i++) {
+            (uint reserve0, uint reserve1) = getReserves(factory, path[i], path[i + 1]);
+            amounts[i + 1] = getAmountOut(amounts[i], reserve0, reserve1);
+        }
+
+        return amounts;
     }
 }
