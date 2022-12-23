@@ -15,6 +15,7 @@ contract UniswapV2RouterTest is Test {
 
     MintableERC20 tokenA;
     MintableERC20 tokenB;
+    MintableERC20 tokenC;
 
     function setUp() public {
         factory = new UniswapV2Factory();
@@ -22,9 +23,11 @@ contract UniswapV2RouterTest is Test {
 
         tokenA = new MintableERC20("Token A", "TKNA");
         tokenB = new MintableERC20("Token B", "TKNB");
+        tokenC = new MintableERC20("Token C", "TKNC");
 
         tokenA.mint(address(this), 10 ether);
         tokenB.mint(address(this), 10 ether);
+        tokenC.mint(address(this), 10 ether);
     }
 
     function encodeError(string memory error) internal pure returns (bytes memory encoded) {
@@ -234,6 +237,50 @@ contract UniswapV2RouterTest is Test {
         assertEq(lpToken.totalSupply(), 1000);
         assertEq(tokenA.balanceOf(address(this)), 10 ether - 1000 wei);
         assertEq(tokenB.balanceOf(address(this)), 10 ether - 1000 wei);
+    }
+
+    function testExactTokensForTokens() public {
+        tokenA.approve(address(router), 1 ether);
+        tokenB.approve(address(router), 2 ether);
+        tokenC.approve(address(router), 1 ether);
+
+        router.addLiquidity(
+            address(tokenA),
+            address(tokenB),
+            1 ether,
+            1 ether,
+            1 ether,
+            1 ether,
+            address(this)
+        );
+
+        router.addLiquidity(
+            address(tokenB), 
+            address(tokenC),
+            1 ether,
+            1 ether,
+            1 ether,
+            1 ether,
+            address(this)
+        );
+
+        address[] memory path = new address[](3);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
+        path[2] = address(tokenC);
+
+        tokenA.approve(address(router), 0.3 ether);
+        router.swapExactTokensForTokens(
+            0.3 ether,
+            0.1 ether,
+            path, 
+            address(this)
+        );
+
+        assertEq(tokenA.balanceOf(address(this)), 10 ether - 1 ether - 0.3 ether);
+        assertEq(tokenB.balanceOf(address(this)), 10 ether - 2 ether);
+        assertEq(tokenC.balanceOf(address(this)), 
+            10 ether - 1 ether + 0.186691414219734305 ether);
     }
 
 }

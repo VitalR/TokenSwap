@@ -8,6 +8,7 @@ contract UniswapV2Router {
     error InsufficientAAmount();
     error InsufficientBAmount();
     error SafeTransferFailed();
+    error InsufficientOutputAmount();
 
     IUniswapV2Factory factory;
 
@@ -65,6 +66,56 @@ contract UniswapV2Router {
 
         if (amountA < amountAMin) revert InsufficientAAmount();
         if (amountB < amountBMin) revert InsufficientBAmount();
+    }
+
+    function swapExactTokensForTokens(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to
+    ) public returns (uint[] memory amounts) {
+
+        amounts = UniswapV2Library.getAmountsOut(address(factory), amountIn, path);
+
+        if (amounts[amounts.length - 1] < amountOutMin) 
+            revert InsufficientOutputAmount();
+
+        _safeTransferFrom(
+            path[0],
+            msg.sender,
+            UniswapV2Library.pairFor(address(factory), path[0], path[1]),
+            amounts[0]
+        );
+
+        _swap(amounts, path, to);
+    }
+
+    function _swap(
+        uint[] memory amounts,
+        address[] memory path,
+        address to_
+    ) internal {
+        for (uint i; i < path.length - 1; i++) {
+            (address input, address output) = (path[i], path[i + 1]);
+            (address token0, ) = UniswapV2Library.sortTokens(input, output);
+
+            uint amountOut = amounts[i + 1];
+            (uint amount0Out, uint amount1Out) = token0 == input
+                ? (uint(0), amountOut)
+                : (amountOut, uint(0));
+
+            address to = i < path.length - 2
+                ? UniswapV2Library.pairFor(
+                    address(factory),
+                    output,
+                    path[i + 2]
+                )
+                : to_;
+
+            IUniswapV2Pair(
+                UniswapV2Library.pairFor(address(factory), input, output)
+            ).swap(amount0Out, amount1Out, to);
+        }
     }
 
     function _calculateLiquidity(
