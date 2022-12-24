@@ -97,4 +97,35 @@ library UniswapV2Library {
 
         return amounts;
     }
+
+    function getAmountIn(
+        uint amountOut,
+        uint reserveIn,
+        uint reserveOut
+    ) public pure returns (uint) {
+        if (amountOut == 0) revert InsufficientAmount();
+        if (reserveIn == 0 || reserveOut == 0) revert InsufficientLiquidity();
+
+        uint numerator = reserveIn * amountOut * 1000;
+        uint denominator = (reserveOut - amountOut) * 997;
+
+        return (numerator / denominator) + 1;
+    }
+
+    function getAmountsIn(
+        address factory,
+        uint amountOut,
+        address[] memory path
+    ) public returns (uint[] memory) {
+        if (path.length < 2) revert InvalidPath();
+        uint[] memory amounts = new uint[](path.length);
+        amounts[amounts.length - 1] = amountOut;
+
+        for (uint i = path.length - 1; i > 0; i--) {
+            (uint reserve0, uint reserve1) = getReserves(factory, path[i - 1], path[i]);
+            amounts[i - 1] = getAmountIn(amounts[i], reserve0, reserve1);
+        }
+
+        return amounts;
+    }
 }
