@@ -18,6 +18,7 @@ contract UniswapV2Pair is ERC20, Math {
     error InsufficientLiquidityMinted();
     error InsufficientLiquidityBurned();
     error InsufficientLiquidity();
+    error InsufficientInputAmount();
     error InsufficientOutputAmount();
     error BalanceOverflow();
     error TransferFailed();
@@ -123,21 +124,30 @@ contract UniswapV2Pair is ERC20, Math {
         if (amount0Out > reserve0_ || amount1Out > reserve1_)
             revert InsufficientLiquidity();
 
-        uint balance0 = IERC20(token0).balanceOf(address(this)) - amount0Out;
-        console.log("balance0 ", balance0);
-        uint balance1 = IERC20(token1).balanceOf(address(this)) - amount1Out;
-        console.log("balance1 ", balance1);
-
-        console.log("balance0 * balance1 ", balance0 * balance1);
-        console.log("uint256(reserve0_) * uint256(reserve1_) ", uint256(reserve0_) * uint256(reserve1_));
-
-        if (balance0 * balance1 < uint256(reserve0_) * uint256(reserve1_))
-            revert InvalidK();
-
-        _update(balance0, balance1, reserve0_, reserve1_);
-
         if (amount0Out > 0) _safeTransfer(token0, to, amount0Out);
         if (amount1Out > 0) _safeTransfer(token1, to, amount1Out);
+
+        uint balance0 = IERC20(token0).balanceOf(address(this)); // - amount0Out;
+        uint balance1 = IERC20(token1).balanceOf(address(this)); // - amount1Out;
+
+        uint amount0In = balance0 > reserve0 - amount0Out
+            ? balance0 - (reserve0 - amount0Out)
+            : 0;
+        uint amount1In = balance1 > reserve1 - amount1Out
+            ? balance1 - (reserve1 - amount1Out)
+            : 0;
+
+        if (amount0In == 0 && amount1In == 0) revert InsufficientInputAmount();
+        
+        uint balance0Adjusted = (balance0 * 1000) - (amount0In * 3);
+        uint balance1Adjusted = (balance1 * 1000) - (amount1In * 3);
+
+        if (
+            balance0Adjusted * balance1Adjusted <
+            uint(reserve0_) * uint(reserve1_) * (1000**2)
+        ) revert InvalidK();
+
+        _update(balance0, balance1, reserve0_, reserve1_);
 
         emit Swap(msg.sender, amount0Out, amount1Out, to);
     }

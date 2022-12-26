@@ -23,6 +23,10 @@ contract UniswapV2PairTest is Test {
         token1.mint(address(this), 10 ether);
     }
 
+    function encodeError(string memory error) internal pure returns (bytes memory encoded) {
+        encoded = abi.encodeWithSignature(error);
+    }
+
     function assertReserves(uint expectedReserve0, uint expectedReserve1) internal {
         (uint reserve0, uint reserve1, ) = pair.getReserves();
         assertEq(reserve0, expectedReserve0, "Unexpected reserve0");
@@ -287,6 +291,17 @@ contract UniswapV2PairTest is Test {
         assertEq(token1.balanceOf(address(this)), 10 ether - 2 ether, 
             "Unexpected token1 balance");
         assertReserves(1 ether, 2 ether);
+    }
+
+    function SwapUnpaidFee() public {
+        token0.transfer(address(pair), 1 ether);
+        token1.transfer(address(pair), 2 ether);
+        pair.mint(address(this));
+
+        token0.transfer(address(pair), 0.1 ether);
+
+        vm.expectRevert(encodeError("InvalidK()"));
+        pair.swap(0, 0.181322178776029827 ether, address(this));
     }
 
 }
