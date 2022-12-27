@@ -4,6 +4,7 @@ pragma solidity ^0.8.15;
 import "solmate/tokens/ERC20.sol";
 import "./libraries/Math.sol";
 import "./libraries/UQ112x112.sol";
+import "./interfaces/IUniswapV2Callee.sol";
 
 import "forge-std/console.sol";
 
@@ -115,7 +116,7 @@ contract UniswapV2Pair is ERC20, Math {
         emit Burn(msg.sender, amount0, amount1, to);
     }
 
-    function swap(uint amount0Out, uint amount1Out, address to) public {
+    function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) public {
         if (amount0Out == 0 && amount1Out == 0)
             revert InsufficientOutputAmount();
 
@@ -126,9 +127,10 @@ contract UniswapV2Pair is ERC20, Math {
 
         if (amount0Out > 0) _safeTransfer(token0, to, amount0Out);
         if (amount1Out > 0) _safeTransfer(token1, to, amount1Out);
+        if (data.length > 0) IUniswapV2Callee(to).uniswapV2Call(msg.sender, amount0Out, amount1Out, data);
 
-        uint balance0 = IERC20(token0).balanceOf(address(this)); // - amount0Out;
-        uint balance1 = IERC20(token1).balanceOf(address(this)); // - amount1Out;
+        uint balance0 = IERC20(token0).balanceOf(address(this));
+        uint balance1 = IERC20(token1).balanceOf(address(this));
 
         uint amount0In = balance0 > reserve0 - amount0Out
             ? balance0 - (reserve0 - amount0Out)
