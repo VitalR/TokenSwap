@@ -50,7 +50,7 @@ contract UniswapV2RouterTest is Test {
 
         address pair = factory.pairs(address(tokenA), address(tokenB));
         // console.log(address(pair));
-        assertEq(pair, 0x3Bf0c9cC31fF626b6b140d8F1fa3B5979f103A95);
+        assertEq(pair, 0x0cCFa00b47021Bf92790A6195001d83468115776);
     }
 
     function testAddLiquidityNoPair() public {

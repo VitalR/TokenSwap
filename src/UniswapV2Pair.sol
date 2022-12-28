@@ -6,8 +6,6 @@ import "./libraries/Math.sol";
 import "./libraries/UQ112x112.sol";
 import "./interfaces/IUniswapV2Callee.sol";
 
-import "forge-std/console.sol";
-
 interface IERC20 {
     function balanceOf(address) external returns (uint);
 }
@@ -47,9 +45,7 @@ contract UniswapV2Pair is ERC20, Math {
     modifier nonReentrant() {
         require(!isEntered);
         isEntered = true;
-
         _;
-
         isEntered = false;
     }
 
@@ -68,20 +64,16 @@ contract UniswapV2Pair is ERC20, Math {
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balance1 = IERC20(token1).balanceOf(address(this));
         uint amount0 = balance0 - reserve0_;
-        console.log("mint:amount0", amount0);
         uint amount1 = balance1 - reserve1_;
-        console.log("mint:amount1", amount1);
 
         if (totalSupply == 0) {
             liquidity = Math.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
             _mint(address(0), MINIMUM_LIQUIDITY);
-            console.log("mint:liquidity", liquidity);
         } else {
             liquidity = Math.min(
                 (amount0 * totalSupply) / reserve0_,
                 (amount1 * totalSupply) / reserve1_
             );
-            console.log("mint:liquidity", liquidity);
         }
 
         if (liquidity <= 0) revert InsufficientLiquidityMinted();
@@ -95,17 +87,11 @@ contract UniswapV2Pair is ERC20, Math {
 
     function burn(address to) public returns (uint amount0, uint amount1) {
         uint balance0 = IERC20(token0).balanceOf(address(this));
-        console.log("burn:balance0", balance0);
         uint balance1 = IERC20(token1).balanceOf(address(this));
-        console.log("burn:balance0", balance1);
         uint liquidity = balanceOf[address(this)];
-        console.log("burn:liquidity-msg.sender", liquidity);
 
         amount0 = (balance0 * liquidity) / totalSupply;
-        console.log("burn:amount0", amount0);
         amount1 = (balance1 * liquidity) / totalSupply;
-        console.log("burn:amount1", amount1);
-        console.log("burn:totalSupply", totalSupply);
 
         if (amount0 == 0 || amount1 == 0) revert InsufficientLiquidityBurned();
 
@@ -115,11 +101,7 @@ contract UniswapV2Pair is ERC20, Math {
         _safeTransfer(token1, to, amount1);
 
         balance0 = IERC20(token0).balanceOf(address(this));
-        console.log("burn:balance0", balance0);
         balance1 = IERC20(token1).balanceOf(address(this));
-        console.log("burn:balance1", balance1);
-
-        console.log(totalSupply);
 
         (uint112 reserve0_, uint112 reserve1_, ) = getReserves();
         _update(balance0, balance1, reserve0_, reserve1_);
@@ -198,5 +180,4 @@ contract UniswapV2Pair is ERC20, Math {
         if (!success || (data.length != 0 && !abi.decode(data, (bool))))
             revert TransferFailed();
     }
-
 }

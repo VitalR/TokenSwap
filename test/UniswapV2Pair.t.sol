@@ -322,10 +322,10 @@ contract UniswapV2PairTest is Test {
         assertEq(token1.balanceOf(address(fl)), 0);
         assertEq(token1.balanceOf(address(pair)), 2 ether + flashloanFee);
     }
-
 }
 
 contract Flashloaner {
+
     error InsufficientFlashLoanAmount();
 
     uint expectedLoanAmount;
@@ -361,5 +361,4 @@ contract Flashloaner {
 
         ERC20(token).transfer(msg.sender, balance);
     }
-
 }
