@@ -7,13 +7,20 @@ import "src/interfaces/IUniswapV2Pair.sol";
 error IdenticalAddresses();
 error ZeroAddress();
 error PairExists();
+error Forbidden();
 
 contract UniswapV2Factory {
+    address public feeTo;
+    address public feeToSetter;
 
     mapping(address => mapping(address => address)) public pairs;
     address[] public allPairs;
 
     event PairCreated(address indexed token0, address indexed tokne1, address pair, uint);
+
+    constructor(address _feeToSetter) public {
+        feeToSetter = _feeToSetter;
+    }
 
     function createPair(address tokenA, address tokenB) public returns (address pair) {
         if (tokenA == tokenB) revert IdenticalAddresses();
@@ -39,5 +46,15 @@ contract UniswapV2Factory {
         allPairs.push(pair);
 
         emit PairCreated(token0, token1, pair, allPairs.length);
+    }
+
+    function setFeeTo(address _feeTo) external {
+        if (msg.sender != feeToSetter) revert Forbidden();
+        feeTo = _feeTo;
+    }
+
+    function setFeeToSetter(address _feeToSetter) external {
+        if (msg.sender != feeToSetter) revert Forbidden();
+        feeToSetter = _feeToSetter;
     }
 }
