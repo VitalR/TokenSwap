@@ -5,6 +5,7 @@ import "solmate/tokens/ERC20.sol";
 import "./libraries/Math.sol";
 import "./libraries/UQ112x112.sol";
 import "./interfaces/IUniswapV2Callee.sol";
+import "./interfaces/IUniswapV2Factory.sol";
 
 interface IERC20 {
     function balanceOf(address) external returns (uint);
@@ -25,15 +26,17 @@ contract UniswapV2Pair is ERC20, Math {
 
     uint constant MINIMUM_LIQUIDITY = 1000;
 
+    address public factory;
     address public token0;
     address public token1;
 
-    uint112 private reserve0;
+    uint112 private reserve0;           // uses single storage slot, accessible via getReserves
     uint112 private reserve1;
     uint32 private blockTimestampLast;
 
     uint public price0CumulativeLast;
     uint public price1CumulativeLast;
+    uint public kLast; // reserve0 * reserve1, as of immediately after the most recent liquidity event
 
     bool private isEntered;
 
@@ -49,7 +52,9 @@ contract UniswapV2Pair is ERC20, Math {
         isEntered = false;
     }
 
-    constructor() ERC20("LP UniswapV2 Pair", "LP-UNI-V2", 18) {}
+    constructor() ERC20("LP UniswapV2 Pair", "LP-UNI-V2", 18) {
+        factory = msg.sender;
+    }
     
     function initialize(address token0_, address token1_) public {
         if (token0 != address(0) || token1 != address(0))
@@ -66,6 +71,8 @@ contract UniswapV2Pair is ERC20, Math {
         uint amount0 = balance0 - reserve0_;
         uint amount1 = balance1 - reserve1_;
 
+        bool feeOn = _mintFee(reserve0_, reserve1_);
+
         if (totalSupply == 0) {
             liquidity = Math.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
             _mint(address(0), MINIMUM_LIQUIDITY);
@@ -79,16 +86,20 @@ contract UniswapV2Pair is ERC20, Math {
         if (liquidity <= 0) revert InsufficientLiquidityMinted();
 
         _mint(to, liquidity);
-
         _update(balance0, balance1, reserve0_, reserve1_);
+
+        if (feeOn) kLast = uint(reserve0) * reserve1; // reserve0 and reserve1 are up-to-date
 
         emit Mint(msg.sender, amount0, amount1);
     }
 
     function burn(address to) public returns (uint amount0, uint amount1) {
+        (uint112 reserve0_, uint112 reserve1_, ) = getReserves();
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balance1 = IERC20(token1).balanceOf(address(this));
         uint liquidity = balanceOf[address(this)];
+
+        bool feeOn = _mintFee(reserve0_, reserve1_);
 
         amount0 = (balance0 * liquidity) / totalSupply;
         amount1 = (balance1 * liquidity) / totalSupply;
@@ -103,8 +114,9 @@ contract UniswapV2Pair is ERC20, Math {
         balance0 = IERC20(token0).balanceOf(address(this));
         balance1 = IERC20(token1).balanceOf(address(this));
 
-        (uint112 reserve0_, uint112 reserve1_, ) = getReserves();
         _update(balance0, balance1, reserve0_, reserve1_);
+
+        if (feeOn) kLast = uint(reserve0) * reserve1; // reserve0 and reserve1 are up-to-date
 
         emit Burn(msg.sender, amount0, amount1, to);
     }
@@ -149,6 +161,27 @@ contract UniswapV2Pair is ERC20, Math {
 
     function getReserves() public view returns (uint112, uint112, uint32) {
         return (reserve0, reserve1, blockTimestampLast);
+    }
+
+    function _mintFee(uint112 _reserve0, uint112 _reserve1) private returns (bool feeOn) {
+        address feeTo = IUniswapV2Factory(factory).feeTo();
+        feeOn = feeTo != address(0);
+        uint _kLast = kLast; // gas savings
+
+        if (feeOn) {  
+            if (_kLast != 0) {
+                uint rootK = Math.sqrt(uint(_reserve0) * _reserve1);
+                uint rootKLast = Math.sqrt(_kLast);
+                if (rootK > rootKLast) {
+                    uint numerator = totalSupply * (rootK - rootKLast);
+                    uint denominator = rootK * 5 + rootKLast;
+                    uint liquidity = numerator / denominator;
+                    if (liquidity > 0) _mint(feeTo, liquidity);
+                }
+            }
+        } else if (_kLast != 0) {
+            kLast = 0;
+        }
     }
 
     function _update(uint balance0_, uint balance1_, uint112 reserve0_, uint112 reserve1_) private {

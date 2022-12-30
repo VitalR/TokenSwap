@@ -6,18 +6,17 @@ import "src/UniswapV2Pair.sol";
 import "src/UniswapV2Factory.sol";
 import "./mocks/MintableERC20.sol";
 
-import "forge-std/console.sol";
-
 contract UniswapV2FactoryTest is Test {
     UniswapV2Factory factory;
-
     MintableERC20 token0;
     MintableERC20 token1;
     MintableERC20 token2;
     MintableERC20 token3;
 
+    address feeToSetter = address(11);
+
     function setUp() public {
-        factory = new UniswapV2Factory();
+        factory = new UniswapV2Factory(feeToSetter);
 
         token0 = new MintableERC20("Token A", "TKNA");
         token1 = new MintableERC20("Token B", "TKNB");
