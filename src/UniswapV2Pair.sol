@@ -7,8 +7,6 @@ import "./libraries/UQ112x112.sol";
 import "./interfaces/IUniswapV2Callee.sol";
 import "./interfaces/IUniswapV2Factory.sol";
 
-import "lib/forge-std/src/console.sol";
-
 interface IERC20 {
     function balanceOf(address) external returns (uint);
 }
@@ -72,9 +70,8 @@ contract UniswapV2Pair is ERC20, Math {
         uint balance1 = IERC20(token1).balanceOf(address(this));
         uint amount0 = balance0 - reserve0_;
         uint amount1 = balance1 - reserve1_;
-        console.log("before feeOn ");
+
         bool feeOn = _mintFee(reserve0_, reserve1_);
-        console.log("after feeOn ", feeOn);
 
         if (totalSupply == 0) {
             liquidity = Math.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
@@ -89,30 +86,20 @@ contract UniswapV2Pair is ERC20, Math {
         if (liquidity <= 0) revert InsufficientLiquidityMinted();
 
         _mint(to, liquidity);
-
-        //
-        console.log("reserve0_", reserve0_);
-        console.log("reserve1_", reserve1_);
-
-
         _update(balance0, balance1, reserve0_, reserve1_);
 
-        //
-        console.log("reserve0", reserve0);
-        console.log("reserve1", reserve1);
-
-
         if (feeOn) kLast = uint(reserve0) * reserve1; // reserve0 and reserve1 are up-to-date
-
-        console.log("kLast - uint(reserve0 * reserve1)", kLast);
 
         emit Mint(msg.sender, amount0, amount1);
     }
 
     function burn(address to) public returns (uint amount0, uint amount1) {
+        (uint112 reserve0_, uint112 reserve1_, ) = getReserves();
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balance1 = IERC20(token1).balanceOf(address(this));
         uint liquidity = balanceOf[address(this)];
+
+        bool feeOn = _mintFee(reserve0_, reserve1_);
 
         amount0 = (balance0 * liquidity) / totalSupply;
         amount1 = (balance1 * liquidity) / totalSupply;
@@ -127,8 +114,9 @@ contract UniswapV2Pair is ERC20, Math {
         balance0 = IERC20(token0).balanceOf(address(this));
         balance1 = IERC20(token1).balanceOf(address(this));
 
-        (uint112 reserve0_, uint112 reserve1_, ) = getReserves();
         _update(balance0, balance1, reserve0_, reserve1_);
+
+        if (feeOn) kLast = uint(reserve0) * reserve1; // reserve0 and reserve1 are up-to-date
 
         emit Burn(msg.sender, amount0, amount1, to);
     }
@@ -180,27 +168,20 @@ contract UniswapV2Pair is ERC20, Math {
         feeOn = feeTo != address(0);
         uint _kLast = kLast; // gas savings
 
-        if (feeOn) {
+        if (feeOn) {  
             if (_kLast != 0) {
-                uint rootK = Math.sqrt(uint(_reserve0 * _reserve1));
+                uint rootK = Math.sqrt(uint(_reserve0) * _reserve1);
                 uint rootKLast = Math.sqrt(_kLast);
-
-                console.log("feeOn rootK", rootK);
-                console.log("feeOn rootKLast", rootKLast);
-
                 if (rootK > rootKLast) {
                     uint numerator = totalSupply * (rootK - rootKLast);
                     uint denominator = rootK * 5 + rootKLast;
                     uint liquidity = numerator / denominator;
-                    console.log("feeOn liquidity", liquidity);
                     if (liquidity > 0) _mint(feeTo, liquidity);
                 }
             }
         } else if (_kLast != 0) {
             kLast = 0;
         }
-
-        console.log("kLast", kLast);
     }
 
     function _update(uint balance0_, uint balance1_, uint112 reserve0_, uint112 reserve1_) private {

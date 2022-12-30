@@ -9,7 +9,6 @@ import "src/UniswapV2Factory.sol";
 import "./mocks/MintableERC20.sol";
 
 contract UniswapV2RouterTest is Test {
-
     UniswapV2Factory factory;
     UniswapV2Router router;
 
@@ -17,8 +16,10 @@ contract UniswapV2RouterTest is Test {
     MintableERC20 tokenB;
     MintableERC20 tokenC;
 
+    address feeToSetter = address(11);
+
     function setUp() public {
-        factory = new UniswapV2Factory();
+        factory = new UniswapV2Factory(feeToSetter);
         router = new UniswapV2Router(address(factory));
 
         tokenA = new MintableERC20("Token A", "TKNA");
@@ -50,7 +51,7 @@ contract UniswapV2RouterTest is Test {
 
         address pair = factory.pairs(address(tokenA), address(tokenB));
         // console.log(address(pair));
-        assertEq(pair, 0x0cCFa00b47021Bf92790A6195001d83468115776);
+        assertEq(pair, 0x3946a2c4a5805bcBdf628F769d9d30E575E6556F);
     }
 
     function testAddLiquidityNoPair() public {
