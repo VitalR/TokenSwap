@@ -38,7 +38,7 @@ contract UniswapV2Pair is ERC20, Math {
     uint public price1CumulativeLast;
     uint public kLast; // reserve0 * reserve1, as of immediately after the most recent liquidity event
 
-    bool private isEntered;
+    uint private locked = 1;
 
     event Mint(address indexed sender, uint amount0, uint amount1);
     event Burn(address indexed sender, uint amount0, uint amount1, address to);
@@ -46,10 +46,10 @@ contract UniswapV2Pair is ERC20, Math {
     event Sync(uint112 reserve0, uint112 reserve1);
 
     modifier nonReentrant() {
-        require(!isEntered);
-        isEntered = true;
+        require(locked == 1, "Reentrancy");
+        locked = 2;
         _;
-        isEntered = false;
+        locked = 1;
     }
 
     constructor() ERC20("LP UniswapV2 Pair", "LP-UNI-V2", 18) {
